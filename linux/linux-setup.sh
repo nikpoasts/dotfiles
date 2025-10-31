@@ -11,6 +11,8 @@ echo "Setting up Linux-specific configurations..."
 mkdir -p ~/.local/bin
 mkdir -p ~/.local/share
 
+curl -sS https://starship.rs/install.sh | sh
+
 # Example: Install additional tools via apt if needed
 # sudo apt install -y <package-name>
 
