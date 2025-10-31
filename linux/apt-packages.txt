@@ -1,7 +1,1 @@
 btop git stow
-
-# Note: VS Code is not available via standard apt repositories.
-# To install VS Code on Linux, use one of these methods:
-# 1. Download .deb from https://code.visualstudio.com/Download
-# 2. Use Microsoft's repository: https://code.visualstudio.com/docs/setup/linux
-# 3. Use snap: sudo snap install --classic code
