@@ -1,0 +1,13 @@
+# Brewfile
+# This Brewfile includes only the top-level formulae and casks you intentionally installed.
+
+# Formulae (top-level tools)
+brew "btop"
+brew "git"
+brew "mosh"
+brew "starship"
+brew "stow"
+brew "tree"
+
+# Casks (apps)
+cask "orbstack"

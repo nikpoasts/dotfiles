@@ -1,0 +1,66 @@
+# ~/.gitconfig
+
+[user]
+	# Replace with your name and email. Git uses this for commit authorship.
+	name = nikpoasts
+	email = 235750484+nikpoasts@users.noreply.github.com
+
+[includeIf "gitdir:~/work/"]
+	path = ~/.gitconfig-work
+
+[core]
+	editor = code --wait # Options: 'code --wait' for VS Code, 'nano', 'vim', etc.
+	excludesfile = ~/.gitignore_global  
+	autocrlf = input   # Options: 'true' on Windows if needed
+	safecrlf = true    # Options: 'true' to warn if CRLF <-> LF conversion would lose data
+
+[init]
+	defaultBranch = main
+
+[alias]
+	# Short, memorable commands for common operations
+	co = checkout
+	br = branch
+	ci = commit
+	st = status
+	unstage = reset HEAD --
+	lg = log --oneline --graph --decorate
+	undo = reset --soft HEAD~1  # Undo last commit, keep changes staged
+	amend = commit --amend --no-edit
+	pullff = pull --ff-only
+	pushf = push --force-with-lease  # Safer than --force
+
+	# Pretty log with graph
+	graph = log --graph --abbrev-commit --decorate --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(bold yellow)%d%C(reset)' --all
+
+[color]
+	ui = auto  # Enable colored output in terminal
+
+[push]
+	default = simple  # Only push current branch to matching upstream (safe default)
+
+[pull]
+	rebase = true  # Prefer rebasing over merging when pulling (cleaner history)
+
+[fetch]
+	prune = true  # Remove remote-tracking refs that no longer exist on remote
+
+[diff]
+	# Better diff algorithm and word-level diffs
+	algorithm = histogram
+	wsErrorHighlight = all
+
+[merge]
+	conflictstyle = zdiff3  # Clearer conflict markers showing base + both sides
+
+[commit]
+	verbose = true  # Show diff in commit message editor for context
+
+[help]
+	autocorrect = 50  # Auto-correct typos in commands (e.g., 'gti' -> 'git') after 0.5s
+
+[rerere]
+	enabled = true  # Reuse recorded resolution of conflicted merges
+
+[credential]
+	helper = cache --timeout=3600  # Cache credentials for 1 hour (adjust as needed)

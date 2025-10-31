@@ -1,0 +1,8 @@
+# ~/.gitconfig-work
+# Work-specific Git configuration
+# This file is included conditionally when working in ~/work/ directory
+# Uncomment and customize with your work credentials
+
+[user]
+	# name = Your Work Name
+	# email = your.email@company.com

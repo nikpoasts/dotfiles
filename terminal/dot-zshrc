@@ -1,0 +1,37 @@
+# Load common commands first
+source ~/.common_commands
+
+# Homebrew (macOS-specific)
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # Try both Homebrew locations (Intel and Apple Silicon)
+    if [ -f /opt/homebrew/bin/brew ]; then
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+    elif [ -f /usr/local/bin/brew ]; then
+        eval "$(/usr/local/bin/brew shellenv)"
+    fi
+fi
+
+# Prompt (Starship)
+if command -v starship >/dev/null 2>&1; then
+    eval "$(starship init zsh)"
+fi
+
+# Zsh-specific history settings
+HISTSIZE=10000
+SAVEHIST=10000
+HISTFILE=~/.zsh_history
+setopt SHARE_HISTORY
+setopt HIST_IGNORE_DUPS
+setopt HIST_FIND_NO_DUPS
+
+# Zsh-specific completion
+autoload -Uz compinit
+compinit
+zstyle ':completion:*' menu select
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
+
+# Zsh-specific aliases
+alias reload="source ~/.zshrc"
+
+# Load local overrides
+[[ -f ~/.zshrc.local ]] && source ~/.zshrc.local

@@ -1,0 +1,63 @@
+# Added by OrbStack: 'orb' SSH host for Linux machines
+# This only works if it's at the top of ssh_config (before any Host blocks).
+# This won't be added again if you remove it.
+Include ~/.orbstack/ssh/config
+
+# ~/.ssh/config
+# Main SSH client configuration
+
+Include ~/.ssh/config.d/*
+Include ~/Documents/PRIVATE_SSH_CONFIGS/config.d/*
+
+# Global defaults for all hosts
+Host *
+    # Environment and agent
+    SetEnv TERM=xterm-256color
+    AddKeysToAgent yes
+    UseKeychain yes  # macOS only; ignored on Linux
+
+    # Connection resilience
+    ServerAliveInterval 60
+    ServerAliveCountMax 5
+    TCPKeepAlive yes
+    ExitOnForwardFailure yes
+
+    # Performance & security
+    Compression no  # rarely helps on modern networks; adds CPU overhead
+
+    # Explicitly prefer modern, secure algorithms (OpenSSH 9.0+ defaults are good, but explicit helps)
+    # These are safe on OpenSSH 8.5+ (Ubuntu 22.04+, macOS 13+, RHEL 9+, etc.)
+    # KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,sntrup761x25519-sha512@openssh.com
+    # HostKeyAlgorithms ssh-ed25519,ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,sk-ssh-ed25519@openssh.com,sk-ecdsa-sha2-nistp256@openssh.com
+    # PubkeyAcceptedAlgorithms ssh-ed25519,ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,sk-ssh-ed25519@openssh.com,sk-ecdsa-sha2-nistp256@openssh.com
+    # Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com
+
+    # FIDO/U2F & Security Key support (passkeys, YubiKey, etc.)
+    # PubkeyAuthentication yes
+    # PreferredAuthentications publickey,password,keyboard-interactive
+
+    # Optional: Load default keys if not using agent
+    # IdentityFile ~/.ssh/id_ed25519
+    # IdentityFile ~/.ssh/id_rsa
+
+# SSH connection multiplexing (master socket per host)
+Match host * exec "test ! -d ~/.ssh/sockets || test -w ~/.ssh/sockets || mkdir -p ~/.ssh/sockets && chmod 700 ~/.ssh/sockets"
+    ControlMaster auto
+    ControlPath ~/.ssh/sockets/%C
+    ControlPersist 8h
+
+# Example host configurations (uncomment and customize)
+#
+# Host github.com
+#     HostName github.com
+#     User git
+#     IdentityFile ~/.ssh/id_ed25519_personal
+#     # Optional: Use SSH key only for this host
+#     IdentitiesOnly yes
+#
+# Host work-server
+#     HostName example.com
+#     User alice
+#     Port 22
+#     IdentityFile ~/.ssh/id_ed25519_work
+#     IdentitiesOnly yes

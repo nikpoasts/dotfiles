@@ -1,0 +1,103 @@
+export PATH="$HOME/.local/bin:$PATH"
+
+# Aliases (shell-agnostic)
+alias ..='cd ..'
+alias c="clear"
+alias ll='ls -alF'
+alias la='ls -A'
+alias lh="ls -a | grep '^\.'"
+# 'l' alias defined after ls platform-specific setup
+
+# Cross-platform ls colors
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    alias ls='ls -G'
+else
+    alias ls='ls --color=auto'
+fi
+
+# Define 'l' alias after ls is set up
+alias l="ls -lah"
+
+# Cross-platform grep colors
+if command -v grep >/dev/null 2>&1; then
+    # Most modern grep implementations support --color
+    # Try to set it, fall back silently if not supported
+    alias grep='grep --color=auto' 2>/dev/null || alias grep='grep'
+fi
+
+alias f='find . | grep'
+alias copy="cp"
+
+# Brew aliases (macOS only)
+if [[ "$OSTYPE" == "darwin"* ]] && command -v brew >/dev/null 2>&1; then
+    alias brewfile='brew bundle dump --force --file=~/dotfiles/mac/Brewfile'
+    alias brewinstall='brew bundle install --file=~/dotfiles/mac/Brewfile'
+    alias brewcat='cat ~/dotfiles/mac/Brewfile'
+fi
+
+# IP alias and functions (cross-platform)
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    alias ip="ifconfig -a | grep -A 7 '^en0' | grep inet | grep -oE '((1?[0-9][0-9]?|2[0-4][0-9]|25[0-5])\.){3}(1?[0-9][0-9]?|2[0-4][0-9]|25[0-5])' | head -n 1"
+else
+    alias ip="hostname -I | awk '{print \$1}'"
+fi
+
+# Public IP (works on both platforms)
+if command -v curl >/dev/null 2>&1; then
+    alias myip="curl -s https://api.ipify.org || curl -s http://checkip.dyndns.org/ | sed 's/[a-zA-Z<>/ :]//g'"
+elif command -v wget >/dev/null 2>&1; then
+    alias myip="wget -qO- https://api.ipify.org"
+fi
+
+
+# -------------------------------------------------
+
+# Dotfiles management (works on Mac & Linux)
+
+# Pull + restow everything
+dotup() {
+    local dotfiles_dir="$HOME/dotfiles"
+    if [ ! -d "$dotfiles_dir" ]; then
+        echo "Error: dotfiles directory not found at $dotfiles_dir"
+        return 1
+    fi
+    cd "$dotfiles_dir" && git pull --rebase && ./symlink.sh && echo "Dotfiles updated – reload shell/IDE"
+}
+
+# Restow a single folder (example: git)
+# Usage: dotrestow git
+dotrestow() {
+  if [[ -z "$1" ]]; then
+    echo "Usage: dotrestow <folder>  (e.g. git, ssh, terminal, shared, linux)"
+    return 1
+  fi
+  local dotfiles_dir="$HOME/dotfiles"
+  if [ ! -d "$dotfiles_dir" ]; then
+    echo "Error: dotfiles directory not found at $dotfiles_dir"
+    return 1
+  fi
+  if [ ! -d "$dotfiles_dir/$1" ]; then
+    echo "Error: Directory $1 not found in dotfiles"
+    return 1
+  fi
+  cd "$dotfiles_dir" && stow --dotfiles -R "$1" && echo "Restowed $1"
+}
+
+# Dry-run preview before restowing
+# Usage: dotpreview git
+dotpreview() {
+  if [[ -z "$1" ]]; then
+    echo "Usage: dotpreview <folder>"
+    return 1
+  fi
+  local dotfiles_dir="$HOME/dotfiles"
+  if [ ! -d "$dotfiles_dir" ]; then
+    echo "Error: dotfiles directory not found at $dotfiles_dir"
+    return 1
+  fi
+  if [ ! -d "$dotfiles_dir/$1" ]; then
+    echo "Error: Directory $1 not found in dotfiles"
+    return 1
+  fi
+  cd "$dotfiles_dir" && stow --dotfiles -n -R "$1"
+}

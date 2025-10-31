@@ -1,0 +1,9 @@
+# ~/.profile
+# Shared environment variables and PATH modifications
+# This file is sourced by login shells on both macOS and Linux
+
+# Add local bin directory to PATH if it exists
+[ -d "$HOME/.local/bin" ] && export PATH="$HOME/.local/bin:$PATH"
+
+# Add custom scripts directory if it exists
+[ -d "$HOME/bin" ] && export PATH="$HOME/bin:$PATH"
