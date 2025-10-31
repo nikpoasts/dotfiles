@@ -8,6 +8,15 @@
 # Add custom scripts directory if it exists
 [ -d "$HOME/bin" ] && export PATH="$HOME/bin:$PATH"
 
+# Homebrew (macOS-specific)
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    if [ -f /opt/homebrew/bin/brew ]; then
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+    elif [ -f /usr/local/bin/brew ]; then
+        eval "$(/usr/local/bin/brew shellenv)"
+    fi
+fi
+
 # if running bash
 if [ -n "$BASH_VERSION" ]; then
     # include .bashrc if it exists

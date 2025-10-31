@@ -1,103 +1,117 @@
-export PATH="$HOME/.local/bin:$PATH"
+# ==============================================================================
+# Navigation Aliases
+# ==============================================================================
 
-# Aliases (shell-agnostic)
 alias ..='cd ..'
-alias c="clear"
-alias ll='ls -alF'
-alias la='ls -A'
-alias lh="ls -a | grep '^\.'"
-# 'l' alias defined after ls platform-specific setup
+alias c='clear'
 
-# Cross-platform ls colors
+# ==============================================================================
+# File Listing Aliases
+# ==============================================================================
+
+# Cross-platform ls with colors
 if [[ "$OSTYPE" == "darwin"* ]]; then
     alias ls='ls -G'
 else
     alias ls='ls --color=auto'
 fi
 
-# Define 'l' alias after ls is set up
-alias l="ls -lah"
+# List variations (defined after ls is set up)
+alias l='ls -lah'
+alias ll='ls -alF'
+alias la='ls -A'
+alias lh="ls -a | grep '^\.'"
 
-# Cross-platform grep colors
+# ==============================================================================
+# Text Processing Aliases
+# ==============================================================================
+
+# Cross-platform grep with colors
 if command -v grep >/dev/null 2>&1; then
-    # Most modern grep implementations support --color
-    # Try to set it, fall back silently if not supported
-    alias grep='grep --color=auto' 2>/dev/null || alias grep='grep'
+    alias grep='grep --color=auto'
 fi
+
+# ==============================================================================
+# File Operations Aliases
+# ==============================================================================
 
 alias f='find . | grep'
-alias copy="cp"
+alias copy='cp'
 
-# Brew aliases (macOS only)
-if [[ "$OSTYPE" == "darwin"* ]] && command -v brew >/dev/null 2>&1; then
-    alias brewfile='brew bundle dump --force --file=~/dotfiles/mac/Brewfile'
-    alias brewinstall='brew bundle install --file=~/dotfiles/mac/Brewfile'
-    alias brewcat='cat ~/dotfiles/mac/Brewfile'
-fi
+# ==============================================================================
+# Network Utilities
+# ==============================================================================
 
-# IP alias and functions (cross-platform)
+# Local IP address (platform-specific)
 if [[ "$OSTYPE" == "darwin"* ]]; then
     alias ip="ifconfig -a | grep -A 7 '^en0' | grep inet | grep -oE '((1?[0-9][0-9]?|2[0-4][0-9]|25[0-5])\.){3}(1?[0-9][0-9]?|2[0-4][0-9]|25[0-5])' | head -n 1"
 else
     alias ip="hostname -I | awk '{print \$1}'"
 fi
 
-# Public IP (works on both platforms)
+# Public IP address
 if command -v curl >/dev/null 2>&1; then
     alias myip="curl -s https://api.ipify.org || curl -s http://checkip.dyndns.org/ | sed 's/[a-zA-Z<>/ :]//g'"
 elif command -v wget >/dev/null 2>&1; then
     alias myip="wget -qO- https://api.ipify.org"
 fi
 
+# ==============================================================================
+# macOS-Specific: Homebrew Aliases
+# ==============================================================================
 
-# -------------------------------------------------
+if [[ "$OSTYPE" == "darwin"* ]] && command -v brew >/dev/null 2>&1; then
+    alias brewfile='brew bundle dump --force --file=~/dotfiles/mac/Brewfile'
+    alias brewinstall='brew bundle install --file=~/dotfiles/mac/Brewfile'
+    alias brewcat='cat ~/dotfiles/mac/Brewfile'
+fi
 
-# Dotfiles management (works on Mac & Linux)
+# ==============================================================================
+# Dotfiles Management Functions
+# ==============================================================================
 
-# Pull + restow everything
-dotup() {
-    local dotfiles_dir="$HOME/dotfiles"
-    if [ ! -d "$dotfiles_dir" ]; then
-        echo "Error: dotfiles directory not found at $dotfiles_dir"
-        return 1
-    fi
-    cd "$dotfiles_dir" && git pull --rebase && ./symlink.sh && echo "Dotfiles updated – reload shell/IDE"
-}
-
-# Restow a single folder (example: git)
-# Usage: dotrestow git
-dotrestow() {
-  if [[ -z "$1" ]]; then
-    echo "Usage: dotrestow <folder>  (e.g. git, ssh, terminal, shared, linux)"
-    return 1
-  fi
+_check_dotfiles_dir() {
   local dotfiles_dir="$HOME/dotfiles"
-  if [ ! -d "$dotfiles_dir" ]; then
+  [ ! -d "$dotfiles_dir" ] && {
     echo "Error: dotfiles directory not found at $dotfiles_dir"
     return 1
-  fi
-  if [ ! -d "$dotfiles_dir/$1" ]; then
+  }
+  echo "$dotfiles_dir"
+}
+
+# Pull latest changes and restow all dotfiles
+dotup() {
+  local dotfiles_dir
+  dotfiles_dir=$(_check_dotfiles_dir) || return 1
+  cd "$dotfiles_dir" && git pull --rebase && ./symlink.sh && echo "Dotfiles updated – reload shell/IDE"
+}
+
+# Restow a single dotfiles folder
+dotrestow() {
+  [[ -z "$1" ]] && {
+    echo "Usage: dotrestow <folder>  (e.g. git, ssh, terminal, shared, linux)"
+    return 1
+  }
+  local dotfiles_dir
+  dotfiles_dir=$(_check_dotfiles_dir) || return 1
+  [ ! -d "$dotfiles_dir/$1" ] && {
     echo "Error: Directory $1 not found in dotfiles"
     return 1
-  fi
+  }
   cd "$dotfiles_dir" && stow --dotfiles -R "$1" && echo "Restowed $1"
 }
 
-# Dry-run preview before restowing
-# Usage: dotpreview git
+# Preview what would be restowed (dry-run)
 dotpreview() {
-  if [[ -z "$1" ]]; then
+  [[ -z "$1" ]] && {
     echo "Usage: dotpreview <folder>"
     return 1
-  fi
-  local dotfiles_dir="$HOME/dotfiles"
-  if [ ! -d "$dotfiles_dir" ]; then
-    echo "Error: dotfiles directory not found at $dotfiles_dir"
-    return 1
-  fi
-  if [ ! -d "$dotfiles_dir/$1" ]; then
+  }
+  local dotfiles_dir
+  dotfiles_dir=$(_check_dotfiles_dir) || return 1
+  [ ! -d "$dotfiles_dir/$1" ] && {
     echo "Error: Directory $1 not found in dotfiles"
     return 1
-  fi
+  }
   cd "$dotfiles_dir" && stow --dotfiles -n -R "$1"
 }

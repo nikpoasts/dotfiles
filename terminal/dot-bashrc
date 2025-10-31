@@ -1,16 +1,6 @@
 # Load common commands first
 source ~/.common_commands
 
-# Homebrew (macOS-specific)
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    # Try both Homebrew locations (Intel and Apple Silicon)
-    if [ -f /opt/homebrew/bin/brew ]; then
-        eval "$(/opt/homebrew/bin/brew shellenv)"
-    elif [ -f /usr/local/bin/brew ]; then
-        eval "$(/usr/local/bin/brew shellenv)"
-    fi
-fi
-
 # Prompt (Starship)
 if command -v starship >/dev/null 2>&1; then
     eval "$(starship init bash)"
