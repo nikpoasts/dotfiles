@@ -49,13 +49,27 @@ backup_conflicting_paths() {
             fi
             ;;
         terminal)
-            # terminal/dot-config/ becomes ~/.config/
+            # terminal/dot-config/ files become ~/.config/ files
             # Only check if .config exists as a file (should be a directory)
             if [ -f "$HOME/.config" ]; then
                 mkdir -p "$BACKUP_DIR"
                 echo -e "${YELLOW}  Backing up existing $HOME/.config (file) to $BACKUP_DIR/.config${NC}"
                 cp "$HOME/.config" "$BACKUP_DIR/.config"
                 CONFLICTS+=("$HOME/.config")
+            fi
+            # Check for all files in dot-config that would conflict
+            if [ -d "$SCRIPT_DIR/terminal/dot-config" ]; then
+                while IFS= read -r src_file; do
+                    # Get relative path from dot-config directory
+                    rel_path="${src_file#$SCRIPT_DIR/terminal/dot-config/}"
+                    dest_file="$HOME/.config/$rel_path"
+                    if [ -f "$dest_file" ] && [ ! -L "$dest_file" ]; then
+                        mkdir -p "$BACKUP_DIR/.config/$(dirname "$rel_path")"
+                        echo -e "${YELLOW}  Backing up existing $dest_file to $BACKUP_DIR/.config/$rel_path${NC}"
+                        cp "$dest_file" "$BACKUP_DIR/.config/$rel_path"
+                        CONFLICTS+=("$dest_file")
+                    fi
+                done < <(find "$SCRIPT_DIR/terminal/dot-config" -type f)
             fi
             # Also check for .zshrc, .bashrc, .common_commands
             for file in .zshrc .bashrc .common_commands; do
@@ -156,18 +170,71 @@ echo -e "${GREEN}Stowing shared packages...${NC}"
 for package in terminal git shared; do
     if [ -d "$SCRIPT_DIR/$package" ]; then
         echo "  Stowing $package..."
-        # Try restow first, if it fails, try unstow then stow
-        if ! stow --dotfiles -R -d "$SCRIPT_DIR" "$package" 2>/dev/null; then
-            # If restow fails, try unstowing first (ignore errors), then stow
-            stow --dotfiles -D -d "$SCRIPT_DIR" "$package" 2>/dev/null || true
-            stow --dotfiles -d "$SCRIPT_DIR" "$package" || {
-                echo -e "${YELLOW}Warning: Failed to stow $package${NC}"
-            }
+        # For terminal package, exclude dot-config directory (handled manually)
+        if [ "$package" = "terminal" ]; then
+            # Temporarily rename dot-config to exclude it from stow
+            if [ -d "$SCRIPT_DIR/terminal/dot-config" ]; then
+                mv "$SCRIPT_DIR/terminal/dot-config" "$SCRIPT_DIR/terminal/.dot-config-backup"
+            fi
+            # Try restow first, if it fails, try unstow then stow
+            if ! stow --dotfiles -R -d "$SCRIPT_DIR" "$package" 2>/dev/null; then
+                # If restow fails, try unstowing first (ignore errors), then stow
+                stow --dotfiles -D -d "$SCRIPT_DIR" "$package" 2>/dev/null || true
+                stow --dotfiles -d "$SCRIPT_DIR" "$package" || {
+                    echo -e "${YELLOW}Warning: Failed to stow $package${NC}"
+                }
+            fi
+            # Restore dot-config directory
+            if [ -d "$SCRIPT_DIR/terminal/.dot-config-backup" ]; then
+                mv "$SCRIPT_DIR/terminal/.dot-config-backup" "$SCRIPT_DIR/terminal/dot-config"
+            fi
+        else
+            # Try restow first, if it fails, try unstow then stow
+            if ! stow --dotfiles -R -d "$SCRIPT_DIR" "$package" 2>/dev/null; then
+                # If restow fails, try unstowing first (ignore errors), then stow
+                stow --dotfiles -D -d "$SCRIPT_DIR" "$package" 2>/dev/null || true
+                stow --dotfiles -d "$SCRIPT_DIR" "$package" || {
+                    echo -e "${YELLOW}Warning: Failed to stow $package${NC}"
+                }
+            fi
         fi
     else
         echo -e "${YELLOW}Warning: Directory $package not found, skipping${NC}"
     fi
 done
+
+# -------------------------------------------------
+# .config directory handling (manual, preserves .config directory structure)
+# Only symlink files from dot-config, don't replace entire .config directory
+# -------------------------------------------------
+if [ -d "$SCRIPT_DIR/terminal/dot-config" ]; then
+    echo -e "${GREEN}Handling .config directory...${NC}"
+    # Ensure .config directory exists
+    mkdir -p "$HOME/.config"
+    
+    # Symlink each file from dot-config into .config (conflicts already checked and resolved)
+    find "$SCRIPT_DIR/terminal/dot-config" -type f | while read -r src_file; do
+        # Get relative path from dot-config directory
+        rel_path="${src_file#$SCRIPT_DIR/terminal/dot-config/}"
+        dest_file="$HOME/.config/$rel_path"
+        
+        # Check if destination already exists as a non-symlink file (should have been backed up already)
+        if [ -f "$dest_file" ] && [ ! -L "$dest_file" ]; then
+            echo -e "${YELLOW}  Warning: $dest_file exists but wasn't backed up, skipping${NC}"
+            continue
+        fi
+        
+        # Remove existing symlink if it exists (to update it)
+        [ -L "$dest_file" ] && rm "$dest_file"
+        
+        # Create parent directory if needed
+        mkdir -p "$(dirname "$dest_file")"
+        
+        # Create symlink
+        ln -sf "$src_file" "$dest_file"
+        echo "  Linked $rel_path"
+    done
+fi
 
 # -------------------------------------------------
 # SSH config handling (manual, preserves .ssh directory structure)
