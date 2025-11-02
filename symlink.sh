@@ -29,12 +29,12 @@ manual_stow_package() {
     local src_dir="$SCRIPT_DIR/$package"
     local dest_dir="$HOME"
     
-    find "$src_dir" -type f \( -name "dot-*" -o \( ! -name ".*" -a ! -name "README.md" -a ! -name ".stowignore" \) \) 2>/dev/null | while read -r src_file; do
+    while read -r src_file; do
         local rel_path="${src_file#$src_dir/}"
         local filename=$(basename "$rel_path")
         local dir_path=$(dirname "$rel_path")
         
-        # Skip if file is in a dot-* directory (handled separately)
+        # Skip if file is in a dot-* directory (handled separately by directory loop)
         [[ "$rel_path" =~ ^dot-[^/]+/ ]] && continue
         
         # Convert dot-* files to .* files
@@ -56,10 +56,10 @@ manual_stow_package() {
         [ -L "$dest_file" ] && rm "$dest_file" 2>/dev/null || true
         mkdir -p "$(dirname "$dest_file")"
         ln -sf "$src_file" "$dest_file"
-    done
+    done < <(find "$src_dir" -type f \( -name "dot-*" -o \( ! -name ".*" -a ! -name "README.md" -a ! -name ".stowignore" \) \) 2>/dev/null)
     
     # Handle subdirectories (like dot-ssh/config)
-    find "$src_dir" -type d -name "dot-*" 2>/dev/null | while read -r src_dir_path; do
+    while read -r src_dir_path; do
         local rel_dir="${src_dir_path#$src_dir/}"
         local dirname=$(basename "$rel_dir")
         local parent_dir=$(dirname "$rel_dir")
@@ -73,16 +73,16 @@ manual_stow_package() {
                 local dest_dir_path="$dest_dir/$parent_dir/$dot_dirname"
             fi
             
-            find "$src_dir_path" -type f 2>/dev/null | while read -r src_file; do
+            while read -r src_file; do
                 local file_rel_path="${src_file#$src_dir_path/}"
                 local dest_file="$dest_dir_path/$file_rel_path"
                 
                 mkdir -p "$(dirname "$dest_file")"
                 [ -L "$dest_file" ] && rm "$dest_file" 2>/dev/null || true
                 ln -sf "$src_file" "$dest_file"
-            done
+            done < <(find "$src_dir_path" -type f 2>/dev/null)
         fi
-    done
+    done < <(find "$src_dir" -type d -name "dot-*" 2>/dev/null)
 }
 
 # Get package files: returns comma-separated list of files for a package
@@ -90,7 +90,7 @@ get_package_files() {
     case "$1" in
         ssh) echo ".ssh/config" ;;
         terminal) echo ".zshrc,.bashrc,.common_commands" ;;
-        git) echo ".gitconfig,.gitignore_global" ;;
+        git) echo ".gitconfig,.gitconfig-work,.gitignore_global" ;;
         shared) echo ".profile" ;;
         *) echo "" ;;
     esac
@@ -99,10 +99,10 @@ get_package_files() {
 backup_file() {
     local src=$1 dest=$2
     [ -f "$src" ] && [ ! -L "$src" ] && {
-        mkdir -p "$(dirname "$dest")"
-        cp "$src" "$dest"
+        mkdir -p "$(dirname "$dest")" || true
+        cp "$src" "$dest" || true
         CONFLICTS+=("$src")
-    }
+    } || true
 }
 
 backup_conflicts() {
@@ -116,11 +116,12 @@ backup_conflicts() {
     done
     
     # Handle terminal dot-config files
-    [ "$package" = "terminal" ] && [ -d "$SCRIPT_DIR/terminal/dot-config" ] && \
-        find "$SCRIPT_DIR/terminal/dot-config" -type f | while read -r src_file; do
-            rel_path="${src_file#$SCRIPT_DIR/terminal/dot-config/}"
+    [ "$package" = "terminal" ] && [ -d "$SCRIPT_DIR/terminal/dot-config" ] && {
+        while read -r src_file; do
+            local rel_path="${src_file#$SCRIPT_DIR/terminal/dot-config/}"
             backup_file "$HOME/.config/$rel_path" "$BACKUP_DIR/.config/$rel_path"
-        done
+        done < <(find "$SCRIPT_DIR/terminal/dot-config" -type f)
+    }
 }
 
 check_conflicts() {
@@ -134,10 +135,11 @@ check_conflicts() {
     for conflict in "${CONFLICTS[@]}"; do
         [ -e "$conflict" ] && [ ! -L "$conflict" ] && {
             echo -e "${RED}Error: Conflicts exist. Resolve before continuing.${NC}"
-            exit 1
+            return 1
         }
     done
     echo ""
+    return 0
 }
 
 stow_package() {
@@ -145,25 +147,26 @@ stow_package() {
     
     # Use manual fallback if stow is not available
     if ! check_stow; then
-        manual_stow_package "$package"
+        manual_stow_package "$package" || true
         return 0
     fi
     
-    # Try stow with --dotfiles flag
+    # Try stow with --dotfiles flag, fallback to manual if it fails
     if [ -n "$ignore_opts" ]; then
-        stow --dotfiles $ignore_opts -R -d "$SCRIPT_DIR" "$package" 2>/dev/null || \
-        stow --dotfiles $ignore_opts -d "$SCRIPT_DIR" "$package" 2>/dev/null || \
-        manual_stow_package "$package"
+        (stow --dotfiles $ignore_opts -R -d "$SCRIPT_DIR" "$package" 2>/dev/null) || \
+        (stow --dotfiles $ignore_opts -d "$SCRIPT_DIR" "$package" 2>/dev/null) || \
+        (manual_stow_package "$package" || true)
     else
-        stow --dotfiles -R -d "$SCRIPT_DIR" "$package" 2>/dev/null || \
-        stow --dotfiles -d "$SCRIPT_DIR" "$package" 2>/dev/null || \
-        manual_stow_package "$package"
+        (stow --dotfiles -R -d "$SCRIPT_DIR" "$package" 2>/dev/null) || \
+        (stow --dotfiles -d "$SCRIPT_DIR" "$package" 2>/dev/null) || \
+        (manual_stow_package "$package" || true)
     fi
+    return 0
 }
 
 symlink_file() {
     local src=$1 dest=$2
-    [ -L "$dest" ] && rm "$dest"
+    [ -L "$dest" ] && rm "$dest" 2>/dev/null || true
     mkdir -p "$(dirname "$dest")"
     ln -sf "$src" "$dest"
 }
@@ -183,10 +186,10 @@ setup_ssh() {
 setup_config() {
     [ ! -d "$SCRIPT_DIR/terminal/dot-config" ] && return
     mkdir -p "$HOME/.config"
-    find "$SCRIPT_DIR/terminal/dot-config" -type f | while read -r src_file; do
-        rel_path="${src_file#$SCRIPT_DIR/terminal/dot-config/}"
+    while read -r src_file; do
+        local rel_path="${src_file#$SCRIPT_DIR/terminal/dot-config/}"
         symlink_file "$src_file" "$HOME/.config/$rel_path"
-    done
+    done < <(find "$SCRIPT_DIR/terminal/dot-config" -type f)
 }
 
 setup_macos() {
@@ -205,16 +208,16 @@ setup_macos() {
 
 setup_linux() {
     [ "$OS" != "Linux" ] && return
-    [ -d "$SCRIPT_DIR/linux" ] && stow_package linux
+    [ -d "$SCRIPT_DIR/linux" ] && { stow_package linux || true; }
 }
 
 # Main execution
 # Check stow availability
 if ! command -v stow >/dev/null 2>&1; then
-    echo -e "${RED}Error: stow not installed${NC}"
-    echo "  macOS: brew install stow"
-    echo "  Linux: sudo apt install stow"
-    echo "  Continuing with manual symlink creation..."
+    echo -e "${RED}Error: stow not installed${NC}" >&2
+    echo "  macOS: brew install stow" >&2
+    echo "  Linux: sudo apt install stow" >&2
+    echo "  Continuing with manual symlink creation..." >&2
 fi
 
 # Copy global ignore file if it exists
@@ -223,17 +226,17 @@ fi
 
 # Backup conflicts
 for package in terminal git shared ssh; do
-    [ -d "$SCRIPT_DIR/$package" ] && backup_conflicts "$package"
+    [ -d "$SCRIPT_DIR/$package" ] && backup_conflicts "$package" || true
 done
-check_conflicts
+check_conflicts || { echo -e "${RED}Error: Could not resolve conflicts. Continuing anyway...${NC}"; }
 
 # Stow packages
 for package in terminal git shared; do
     [ -d "$SCRIPT_DIR/$package" ] && {
         if [ "$package" = "terminal" ] && [ -d "$SCRIPT_DIR/terminal/dot-config" ]; then
-            stow_package "$package" "--ignore=dot-config"
+            stow_package "$package" "--ignore=dot-config" || true
         else
-            stow_package "$package"
+            stow_package "$package" || true
         fi
     }
 done
@@ -245,4 +248,4 @@ setup_linux
 
 # Show backups if any were created
 [ -d "$BACKUP_DIR" ] && [ "$(ls -A "$BACKUP_DIR" 2>/dev/null)" ] && \
-    echo -e "${YELLOW}Backups saved to: $BACKUP_DIR${NC}"
+    echo -e "${YELLOW}Backups saved to: $BACKUP_DIR${NC}" || true
