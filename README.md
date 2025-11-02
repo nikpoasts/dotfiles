@@ -4,7 +4,7 @@ I've created this repository to manage my dotfiles. I often ssh into remote serv
 
 Feel free to fork and adapt for your own use. I will be maintaining this repository and adding new features as I need them. Please feel free to open an issue if you have any suggestions or find any bugs.
 
-Special thanks to [X-AI's Grok](https://grok.com/) and [Cursor's Composer 1](https://www.cursor.com/) for accelerating the process of creating this repository.
+Special thanks to [X-AI's Grok](https://grok.com/) and [Cursor's Composer 1](https://www.cursor.com/) for helping in this repository.
 
 ## Setup
 
