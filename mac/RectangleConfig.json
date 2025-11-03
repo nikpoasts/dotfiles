@@ -235,13 +235,20 @@
     "unsnapRestore" : {
       "int" : 0
     },
+    "widthStepSize" : {
+      "float" : 30
+    },
     "windowSnapping" : {
       "int" : 0
     }
   },
   "shortcuts" : {
-    "bottomHalf" : {
+    "firstTwoThirds" : {
       "keyCode" : 38,
+      "modifierFlags" : 524288
+    },
+    "lastThird" : {
+      "keyCode" : 40,
       "modifierFlags" : 524288
     },
     "leftHalf" : {
@@ -263,11 +270,7 @@
     "toggleTodo" : {
       "keyCode" : 11,
       "modifierFlags" : 786432
-    },
-    "topHalf" : {
-      "keyCode" : 40,
-      "modifierFlags" : 524288
     }
   },
-  "version" : "97"
+  "version" : "98"
 }
